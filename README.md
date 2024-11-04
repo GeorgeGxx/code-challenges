@@ -1,7 +1,7 @@
 # Dev Challenges
 
-`Hola Devs!, este es un repositorio de retos de programación, donde podrás encontrar las pruebas técnicas que diversas empresas me han hecho en entrevistas de trabajo.`
+`Hola Devs!, les dejo este repo de retos de programación con pruebas técnicas backend y devops.`
 
 Lo iré actualizando..
 
-GeorgeGxx
+@GeorgeGxx

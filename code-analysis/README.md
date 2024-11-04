@@ -18,6 +18,11 @@ e. @Override
 f. @Table
 g. @Column
 
+Repository es la mínima
+Entity, Table y Column solo aplican si usas code first
+Controller y Service son de otras capas
+Y Override es una anotación para cuando extiendes un metodo de una clase padre (no tiene nada que ver)
+
 4. Escriba una función para saber si el List<Movie> movieList contiene la Movie “m”, de ser necesario modifique el código de Movie:
 
 ![img3](../code-analysis/images/3.png)
