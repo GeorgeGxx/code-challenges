@@ -1,5 +1,7 @@
 # Dev Challenges
 
-`Hola Devs!, les dejo este repo con pruebas técnicas backend y devops (de diversos procesos de selección).`
+Hola Devs!, les dejo este repo con pruebas técnicas backend y devops (de diversos procesos de selección).
+
+No olviden hacer `git pull origin master` para obtener las últimas actualizaciones.
 
 @GeorgeGxx
