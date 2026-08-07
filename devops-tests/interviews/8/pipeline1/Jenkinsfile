@@ -1,0 +1,73 @@
+pipeline {
+  agent { label 'linux' } // assumes Linux agent with curl, unzip, diff, mailx
+  options {
+    timestamps()
+    buildDiscarder(logRotator(daysToKeepStr: '14', numToKeepStr: '10'))
+    timeout(time: 30, unit: 'MINUTES') // pipeline-level timeout
+  }
+  environment {
+    // Default values ​​— can be overridden in job parameters or credentials
+    NPP_DOWNLOAD_URL = "${env.NPP_DOWNLOAD_URL ?: 'https://github.com/notepad-plus-plus/notepad-plus-plus/releases/latest/download/npp.7z'}"
+    PREVIOUS_ARCHIVE = "${env.PREVIOUS_ARCHIVE ?: 'previous_notepadpp.zip'}" // path in workspace or URL
+    LOCK_FILE = "${env.LOCK_FILE ?: 'npp_update.lock'}"
+    EMAIL_TO = "${env.EMAIL_TO ?: 'releases@example.com'}"
+    WORKDIR = "${env.WORKSPACE}"
+    TMPDIR = "${env.WORKSPACE}/tmp_npp_monitor"
+  }
+  stages {
+    stage('Prepare workspace') {
+      steps {
+        echo "Preparing workspace..."
+        sh '''
+          set -eu
+          rm -rf "${TMPDIR}"
+          mkdir -p "${TMPDIR}"
+          echo "Workdir: ${WORKDIR}"
+        '''
+      }
+    }
+
+    stage('Download & Monitor') {
+      steps {
+        echo "Running monitor script..."
+        // make script available in workspace and run it
+        writeFile file: "monitor_npp.sh", text: libraryResource('monitor_npp.sh') // fallback for libraryResource; will be overwritten if not available
+        sh "chmod +x monitor_npp.sh"
+        // run with parameters
+        sh """
+          ./monitor_npp.sh \
+            --download-url '${NPP_DOWNLOAD_URL}' \
+            --previous-archive '${PREVIOUS_ARCHIVE}' \
+            --lock-file '${LOCK_FILE}' \
+            --email-to '${EMAIL_TO}' \
+            --tmpdir '${TMPDIR}'
+        """
+      }
+    }
+
+    stage('Archive artifacts') {
+      when {
+        anyOf {
+          expression { fileExists("${WORKDIR}/latest_npp.zip") }
+        }
+      }
+      steps {
+        archiveArtifacts artifacts: 'latest_npp.zip', allowEmptyArchive: true
+        archiveArtifacts artifacts: 'monitor_output.log', allowEmptyArchive: true
+      }
+    }
+  }
+
+  post {
+    always {
+      echo "Cleanup workspace tmpdir"
+      sh 'rm -rf "${TMPDIR}" || true'
+    }
+    success {
+      echo "Pipeline finished SUCCESS"
+    }
+    failure {
+      echo "Pipeline finished FAILURE"
+    }
+  }
+}

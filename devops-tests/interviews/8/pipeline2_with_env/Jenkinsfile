@@ -1,0 +1,79 @@
+pipeline {
+  agent { label 'linux' }
+
+  options {
+    timestamps()
+    buildDiscarder(logRotator(daysToKeepStr: '14', numToKeepStr: '10'))
+    timeout(time: 30, unit: 'MINUTES')
+  }
+
+  environment {
+    // Default values (can be overridden by .env)
+    NPP_DOWNLOAD_URL = 'https://github.com/notepad-plus-plus/notepad-plus-plus/releases/latest/download/npp.7z'
+    PREVIOUS_ARCHIVE = 'previous_notepadpp.zip'
+    LOCK_FILE = 'npp_update.lock'
+    EMAIL_TO = 'releases@example.com'
+    WORKDIR = "${env.WORKSPACE}"
+    TMPDIR = "${env.WORKSPACE}/tmp_npp_monitor"
+  }
+
+  stages {
+    stage('Prepare workspace') {
+      steps {
+        echo "Preparing workspace..."
+        sh '''
+          set -eu
+          rm -rf "${TMPDIR}"
+          mkdir -p "${TMPDIR}"
+          echo "Workdir: ${WORKDIR}"
+
+          # Load environment variables from .env if it exists
+          if [ -f ".env" ]; then
+            echo "Loading .env variables..."
+            export $(grep -v '^#' .env | xargs)
+          fi
+        '''
+      }
+    }
+
+    stage('Run Notepad++ Monitor') {
+      steps {
+        echo "Executing monitoring script..."
+        sh '''
+          chmod +x monitor_npp.sh
+
+          ./monitor_npp.sh \
+            --download-url "${NPP_DOWNLOAD_URL}" \
+            --previous-archive "${PREVIOUS_ARCHIVE}" \
+            --lock-file "${LOCK_FILE}" \
+            --email-to "${EMAIL_TO}" \
+            --tmpdir "${TMPDIR}"
+        '''
+      }
+    }
+
+    stage('Archive artifacts') {
+      when {
+        anyOf {
+          expression { fileExists("${WORKDIR}/latest_npp.zip") }
+        }
+      }
+      steps {
+        archiveArtifacts artifacts: 'latest_npp.zip, monitor_output.log', allowEmptyArchive: true
+      }
+    }
+  }
+
+  post {
+    always {
+      echo "Cleanup workspace tmpdir"
+      sh 'rm -rf "${TMPDIR}" || true'
+    }
+    success {
+      echo "Pipeline finished SUCCESS"
+    }
+    failure {
+      echo "Pipeline finished FAILURE"
+    }
+  }
+}
